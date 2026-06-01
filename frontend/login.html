@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 计费仪表盘</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+        }
+        .auth-card {
+            background: #fff; border-radius: 16px; padding: 36px 32px; width: 100%; max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        .auth-card h1 { text-align: center; font-size: 24px; color: #1a1a2e; margin-bottom: 6px; }
+        .auth-card .subtitle { text-align: center; font-size: 14px; color: #888; margin-bottom: 28px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 14px; font-weight: 600; color: #333; margin-bottom: 6px; }
+        .form-group input {
+            width: 100%; padding: 11px 14px; border: 1.5px solid #d9d9d9; border-radius: 8px;
+            font-size: 15px; font-family: inherit; outline: none; transition: border-color 0.2s;
+        }
+        .form-group input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
+        .btn {
+            display: block; width: 100%; padding: 12px; font-size: 16px; font-weight: 600;
+            border: none; border-radius: 8px; cursor: pointer; font-family: inherit;
+            background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; transition: all 0.2s;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(102,126,234,0.35); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .error { background: #fff2f0; border: 1px solid #ffccc7; color: #ff4d4f; padding: 10px 16px;
+            border-radius: 8px; margin-bottom: 16px; font-size: 14px; text-align: center; display: none; }
+        .error.show { display: block; }
+        .footer { text-align: center; margin-top: 20px; font-size: 14px; color: #888; }
+        .footer a { color: #667eea; font-weight: 600; text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .hint { margin-top: 16px; text-align: center; font-size: 12px; color: #aaa; background: #fafafa;
+            padding: 8px; border-radius: 6px; }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <h1>📊 计费仪表盘</h1>
+        <p class="subtitle">登录您的账户</p>
+
+        <div id="errorBox" class="error"></div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label>👤 用户名</label>
+                <input type="text" id="username" placeholder="请输入用户名" required autofocus>
+            </div>
+            <div class="form-group">
+                <label>🔒 密码</label>
+                <input type="password" id="password" placeholder="请输入密码" required>
+            </div>
+            <button type="submit" class="btn" id="submitBtn">登 录</button>
+        </form>
+
+        <div class="footer">
+            <span>还没有账号？</span>
+            <a href="/register.html">立即注册 →</a>
+        </div>
+
+        <div class="hint">💡 演示账号：admin / 123456 ｜ demo / demo123 ｜ yy / yy1</div>
+    </div>
+
+    <script>
+        // 已登录则跳转
+        (function() {
+            const token = localStorage.getItem('token');
+            const role = localStorage.getItem('role');
+            if (token && role) {
+                window.location.href = role === 'admin' ? '/admin.html' : '/user.html';
+            }
+        })();
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const errBox = document.getElementById('errorBox');
+            errBox.classList.remove('show');
+            btn.disabled = true;
+            btn.textContent = '登录中...';
+
+            try {
+                const resp = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value.trim(),
+                        password: document.getElementById('password').value,
+                    }),
+                });
+                const result = await resp.json();
+
+                if (result.success) {
+                    localStorage.setItem('token', result.token);
+                    localStorage.setItem('username', result.user.username);
+                    localStorage.setItem('role', result.user.role);
+                    localStorage.setItem('userId', result.user.id);
+                    window.location.href = result.user.role === 'admin' ? '/admin.html' : '/user.html';
+                } else {
+                    errBox.textContent = result.message;
+                    errBox.classList.add('show');
+                    // 如果提示需要注册，跳转到注册页
+                    if (result.need_register) {
+                        setTimeout(() => { window.location.href = '/register.html'; }, 1500);
+                    }
+                }
+            } catch (err) {
+                errBox.textContent = '网络错误，请检查服务器连接';
+                errBox.classList.add('show');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '登 录';
+            }
+        }
+    </script>
+</body>
+</html>

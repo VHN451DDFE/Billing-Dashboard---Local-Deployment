@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人设置 - 计费系统</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- Top Navbar -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <h1>⚙️ 个人设置</h1>
+            <span class="nav-subtitle">管理您的账户信息</span>
+        </div>
+        <div class="nav-right">
+            {% if user.role == 'admin' %}
+            <a href="/admin" class="nav-link">🛡️ 管理后台</a>
+            {% endif %}
+            <a href="/user" class="nav-link">📊 我的面板</a>
+            <span class="nav-user">
+                <span class="nav-avatar">👤</span>
+                <span class="nav-username">{{ user.username }}</span>
+            </span>
+            <a href="/logout" class="btn btn-logout">退出登录</a>
+        </div>
+    </nav>
+
+    <div class="dashboard">
+        <div class="profile-container">
+            <!-- Profile Card -->
+            <div class="profile-sidebar">
+                <div class="profile-avatar-section">
+                    <div class="profile-avatar-large">👤</div>
+                    <h2>{{ user.username }}</h2>
+                    <span class="badge {{ 'badge-admin-role' if user.role == 'admin' else 'badge-user-role' }}">
+                        {{ '管理员' if user.role == 'admin' else '普通用户' }}
+                    </span>
+                </div>
+                <div class="profile-info-list">
+                    <div class="profile-info-item">
+                        <span class="info-label">📧 邮箱</span>
+                        <span class="info-value">{{ user.email or '未设置' }}</span>
+                    </div>
+                    <div class="profile-info-item">
+                        <span class="info-label">📱 手机号</span>
+                        <span class="info-value">{{ user.phone or '未设置' }}</span>
+                    </div>
+                    <div class="profile-info-item">
+                        <span class="info-label">📅 注册时间</span>
+                        <span class="info-value">{{ user.created_at or '-' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Forms -->
+            <div class="profile-main">
+                <!-- Update Profile -->
+                <div class="chart-card">
+                    <h2>📝 编辑个人资料</h2>
+                    <form id="profileForm" onsubmit="updateProfile(event)" style="padding-top: 12px;">
+                        <div class="form-group">
+                            <label for="username">用户名</label>
+                            <input type="text" id="username" value="{{ user.username }}" disabled
+                                   style="background:#f5f5f5;color:#999;">
+                            <span style="font-size:12px;color:#999;">用户名不可修改</span>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="email">📧 邮箱</label>
+                                <input type="email" id="email" value="{{ user.email or '' }}" placeholder="your@email.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="phone">📱 手机号</label>
+                                <input type="tel" id="phone" value="{{ user.phone or '' }}" placeholder="13800000000">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">💾 保存资料</button>
+                            <span id="profileMsg" class="form-msg"></span>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Change Password -->
+                <div class="chart-card" style="margin-top: 20px;">
+                    <h2>🔒 修改密码</h2>
+                    <form id="passwordForm" onsubmit="changePassword(event)" style="padding-top: 12px;">
+                        <div class="form-group">
+                            <label for="old_password">原密码</label>
+                            <input type="password" id="old_password" placeholder="请输入原密码" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="new_password">新密码</label>
+                                <input type="password" id="new_password" placeholder="至少 6 位" required minlength="6">
+                            </div>
+                            <div class="form-group">
+                                <label for="confirm_password">确认新密码</label>
+                                <input type="password" id="confirm_password" placeholder="再次输入新密码" required minlength="6">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">🔐 修改密码</button>
+                            <span id="passwordMsg" class="form-msg"></span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function updateProfile(e) {
+            e.preventDefault();
+            const data = {
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+            };
+            const resp = await fetch('/api/profile/update', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data),
+            });
+            const result = await resp.json();
+            const msg = document.getElementById('profileMsg');
+            msg.textContent = result.message;
+            msg.className = 'form-msg ' + (result.success ? 'msg-success' : 'msg-error');
+            if (result.success) {
+                setTimeout(() => { msg.textContent = ''; }, 3000);
+            }
+        }
+
+        async function changePassword(e) {
+            e.preventDefault();
+            const oldPw = document.getElementById('old_password').value;
+            const newPw = document.getElementById('new_password').value;
+            const confirmPw = document.getElementById('confirm_password').value;
+
+            const msg = document.getElementById('passwordMsg');
+
+            if (newPw.length < 6) {
+                msg.textContent = '新密码至少 6 位';
+                msg.className = 'form-msg msg-error';
+                return;
+            }
+            if (newPw !== confirmPw) {
+                msg.textContent = '两次新密码不一致';
+                msg.className = 'form-msg msg-error';
+                return;
+            }
+
+            const resp = await fetch('/api/profile/password', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    old_password: oldPw,
+                    new_password: newPw,
+                    confirm: confirmPw,
+                }),
+            });
+            const result = await resp.json();
+            msg.textContent = result.message;
+            msg.className = 'form-msg ' + (result.success ? 'msg-success' : 'msg-error');
+            if (result.success) {
+                document.getElementById('passwordForm').reset();
+                setTimeout(() => { msg.textContent = ''; }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>

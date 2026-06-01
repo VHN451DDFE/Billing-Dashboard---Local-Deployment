@@ -1,0 +1,333 @@
+/* ── Auth Pages: Login / Register / Social Login ── */
+
+.auth-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 420px;
+}
+
+.auth-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 36px 32px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.auth-header h1 {
+    font-size: 24px;
+    color: #1a1a2e;
+    margin-bottom: 6px;
+}
+
+.auth-header p {
+    font-size: 14px;
+    color: #888;
+}
+
+/* ── Error ── */
+.auth-error {
+    background: #fff2f0;
+    border: 1px solid #ffccc7;
+    color: #ff4d4f;
+    padding: 10px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* ── Form ── */
+.auth-form {
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 6px;
+}
+
+.form-group .required {
+    color: #ff4d4f;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid #d9d9d9;
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    color: #333;
+    background: #fafafa;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+    background: #fff;
+}
+
+.field-error {
+    display: block;
+    color: #ff4d4f;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* ── Button ── */
+.btn {
+    display: inline-block;
+    padding: 11px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    border: 1.5px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    text-decoration: none;
+    text-align: center;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
+}
+
+.btn-block {
+    display: block;
+    width: 100%;
+}
+
+.btn-sm {
+    padding: 5px 12px;
+    font-size: 13px;
+    border-radius: 6px;
+}
+
+/* ── Auth Footer ── */
+.auth-footer {
+    text-align: center;
+    font-size: 14px;
+    color: #888;
+    margin-top: 4px;
+}
+
+.auth-footer a {
+    color: #667eea;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+/* ── Social Divider ── */
+.social-divider {
+    text-align: center;
+    margin: 24px 0 16px;
+    position: relative;
+}
+
+.social-divider::before,
+.social-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 30%;
+    height: 1px;
+    background: #e0e0e0;
+}
+
+.social-divider::before { left: 0; }
+.social-divider::after  { right: 0; }
+
+.social-divider span {
+    background: #fff;
+    padding: 0 12px;
+    font-size: 13px;
+    color: #aaa;
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Social Buttons ── */
+.social-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.social-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    color: #fff;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.social-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+}
+
+.social-btn.wechat { background: #07C160; }
+.social-btn.qq     { background: #12B7F5; }
+.social-btn.weibo  { background: #E6162D; }
+
+.social-icon {
+    font-size: 20px;
+}
+
+/* ── Demo Hint ── */
+.demo-hint {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 12px;
+    color: #aaa;
+    background: #fafafa;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+/* ── Social Auth Card ── */
+.social-auth-card .social-icon-large {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.social-desc {
+    font-size: 13px !important;
+    color: #999 !important;
+    line-height: 1.6;
+}
+
+.social-desc small {
+    font-size: 11px;
+    color: #bbb;
+}
+
+/* ── OAuth Info Box ── */
+.oauth-info-box {
+    background: #f6f8fa;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+}
+
+.oauth-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 13px;
+    color: #555;
+    line-height: 1.5;
+}
+
+.step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: #667eea;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+/* ── Mock QR Code ── */
+.mock-qrcode {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.qrcode-box {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 160px;
+    height: 160px;
+    background: #f0f0f0;
+    border: 2px dashed #ccc;
+    border-radius: 12px;
+    gap: 8px;
+}
+
+.qrcode-icon {
+    font-size: 48px;
+}
+
+.qrcode-text {
+    font-size: 14px;
+    color: #888;
+    font-weight: 600;
+}
+
+.qrcode-hint {
+    font-size: 12px;
+    color: #aaa;
+    margin-top: 8px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+    .auth-card {
+        padding: 24px 20px;
+        border-radius: 12px;
+    }
+
+    .auth-header h1 {
+        font-size: 20px;
+    }
+
+    .social-buttons {
+        gap: 8px;
+    }
+
+    .social-btn {
+        padding: 10px;
+        font-size: 14px;
+    }
+}

@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员控制台 - 计费系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:"Microsoft YaHei","PingFang SC",sans-serif; background:#f0f2f5; color:#333; }
+        .navbar {
+            background:linear-gradient(135deg,#1a1a2e,#16213e 50%,#0f3460); color:#fff;
+            display:flex; align-items:center; justify-content:space-between; padding:0 28px; height:56px;
+            position:sticky; top:0; z-index:100;
+        }
+        .nav-left { display:flex; align-items:baseline; gap:12px; }
+        .nav-left h1 { font-size:20px; }
+        .nav-subtitle { font-size:13px; opacity:.75; }
+        .nav-right { display:flex; align-items:center; gap:14px; }
+        .nav-right a, .nav-right button {
+            color:#fff; text-decoration:none; font-size:13px; padding:6px 12px; border-radius:6px;
+            background:rgba(255,255,255,.15); border:none; cursor:pointer; font-family:inherit;
+        }
+        .nav-right a:hover, .nav-right button:hover { background:rgba(255,255,255,.25); }
+        .layout { display:flex; min-height:calc(100vh - 56px); }
+        .sidebar {
+            width:220px; background:#fff; border-right:1px solid #e8e8e8; flex-shrink:0;
+            position:sticky; top:56px; height:calc(100vh - 56px); overflow-y:auto; display:flex; flex-direction:column;
+        }
+        .sidebar a {
+            display:flex; align-items:center; gap:10px; padding:14px 20px; color:#555;
+            text-decoration:none; font-size:14px; font-weight:500; border-left:3px solid transparent;
+            cursor:pointer; transition:all .2s;
+        }
+        .sidebar a:hover { background:#f5f5f5; }
+        .sidebar a.active { background:#e6f0ff; color:#667eea; border-left-color:#667eea; font-weight:600; }
+        .main { flex:1; padding:24px; }
+        .tab { display:none; }
+        .tab.active { display:block; }
+
+        .kpi-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-bottom:24px; }
+        .kpi-card {
+            background:#fff; border-radius:12px; padding:20px; display:flex; align-items:center; gap:14px;
+            box-shadow:0 2px 8px rgba(0,0,0,.06); border-left:4px solid transparent;
+        }
+        .kpi-card.revenue { border-left-color:#52c41a; } .kpi-card.cost { border-left-color:#ff4d4f; }
+        .kpi-card.profit { border-left-color:#1890ff; } .kpi-card.services { border-left-color:#722ed1; }
+        .kpi-card.users { border-left-color:#fa8c16; }
+        .kpi-icon { font-size:32px; } .kpi-label { font-size:12px; color:#888; } .kpi-value { font-size:20px; font-weight:700; color:#1a1a2e; }
+
+        .charts { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px; }
+        .chart-box { background:#fff; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+        .chart-box.full { grid-column:1/-1; }
+        .chart-box h3 { margin-bottom:14px; color:#1a1a2e; }
+
+        .card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,.06); margin-bottom:20px; }
+        .card h3 { margin-bottom:16px; color:#1a1a2e; }
+        .toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px; }
+        .toolbar input, .toolbar select {
+            padding:8px 12px; border:1.5px solid #d9d9d9; border-radius:6px; font-size:13px; font-family:inherit;
+        }
+        .btn {
+            padding:8px 16px; border:none; border-radius:6px; font-size:13px; font-weight:600;
+            cursor:pointer; font-family:inherit; transition:all .2s;
+        }
+        .btn-add { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; }
+        .btn-add:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(102,126,234,.3); }
+        .btn-cancel { background:#f5f5f5; color:#666; }
+        .btn-danger { background:#ff4d4f; color:#fff; }
+        .btn-sm { padding:4px 10px; font-size:12px; border-radius:4px; }
+
+        table { width:100%; border-collapse:collapse; font-size:13px; }
+        th { background:#fafafa; color:#555; font-weight:600; padding:10px 12px; text-align:left; border-bottom:2px solid #e8e8e8; }
+        td { padding:9px 12px; border-bottom:1px solid #f0f0f0; }
+        tr:hover { background:#e6f7ff; }
+        .badge { display:inline-block; padding:2px 8px; border-radius:8px; font-size:11px; font-weight:600; }
+        .badge-income { background:#f6ffed; color:#52c41a; } .badge-expense { background:#fff2f0; color:#ff4d4f; }
+        .badge-admin { background:#fff2f0; color:#ff4d4f; } .badge-user { background:#e6f7ff; color:#1890ff; }
+
+        .modal-overlay { display:none; position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,.45); z-index:200; align-items:center; justify-content:center; }
+        .modal { background:#fff; border-radius:14px; width:100%; max-width:500px; box-shadow:0 20px 60px rgba(0,0,0,.2); padding:24px; }
+        .modal h3 { margin-bottom:16px; }
+        .modal .form-group { margin-bottom:14px; }
+        .modal .form-group label { display:block; font-size:13px; font-weight:600; margin-bottom:4px; }
+        .modal .form-group input, .modal .form-group select { width:100%; padding:9px; border:1.5px solid #d9d9d9; border-radius:6px; font-size:14px; font-family:inherit; }
+        .modal .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:16px; }
+
+        @media (max-width:1024px) { .kpi-grid { grid-template-columns:repeat(3,1fr); } .charts{grid-template-columns:1fr;} .sidebar{width:180px;} }
+        @media (max-width:768px) { .layout{flex-direction:column;} .sidebar{width:100%;height:auto;position:static;flex-direction:row;overflow-x:auto;} .sidebar a{white-space:nowrap;border-left:none;border-bottom:3px solid transparent;} .sidebar a.active{border-left:none;border-bottom-color:#667eea;} .kpi-grid{grid-template-columns:repeat(2,1fr);} }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-left"><h1>🛡️ 管理员控制台</h1><span class="nav-subtitle">计费数据管理后台</span></div>
+        <div class="nav-right">
+            <span id="navUser"></span>
+            <a href="/user.html">切换到用户视图</a>
+            <a href="#" onclick="openExportModal()">📥 导出报表</a>
+            <button onclick="logout()">退出登录</button>
+        </div>
+    </nav>
+
+    <div class="layout">
+        <aside class="sidebar">
+            <a class="active" data-tab="dashboard">📊 数据概览</a>
+            <a data-tab="records">📋 计费记录</a>
+            <a data-tab="users">👥 用户管理</a>
+            <a data-tab="logs">📜 审计日志</a>
+            <a href="/profile.html">⚙️ 个人设置</a>
+        </aside>
+
+        <main class="main">
+            <!-- Tab: Dashboard -->
+            <div id="tab-dashboard" class="tab active">
+                <div class="kpi-grid" id="kpiContainer"></div>
+                <div class="charts">
+                    <div class="chart-box full"><h3>📈 全平台收入趋势</h3><canvas id="revenueChart" style="max-height:320px;"></canvas></div>
+                    <div class="chart-box"><h3>🍩 支出分类占比</h3><canvas id="costChart" style="max-height:280px;"></canvas></div>
+                    <div class="chart-box"><h3>📊 各服务收入对比</h3><canvas id="serviceChart" style="max-height:280px;"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Tab: Records -->
+            <div id="tab-records" class="tab">
+                <div class="card">
+                    <div class="toolbar">
+                        <div>
+                            <input type="text" id="recSearch" placeholder="🔍 搜索..." oninput="loadRecords()">
+                            <select id="recTypeFilter" onchange="loadRecords()">
+                                <option value="">全部类型</option><option value="收入">收入</option><option value="支出">支出</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-add" onclick="openRecordModal()">+ 新增记录</button>
+                        <button class="btn btn-add" style="background:linear-gradient(135deg,#f093fb,#f5576c);" onclick="openBatchModal()">📋 批量添加</button>
+                    </div>
+                    <div style="max-height:500px;overflow-y:auto;"><table><thead>
+                        <tr><th>ID</th><th>日期</th><th>服务</th><th>类型</th><th>金额</th><th>分类</th><th>描述</th><th>用户ID</th><th>操作</th></tr>
+                    </thead><tbody id="recordsTbody"></tbody></table></div>
+                </div>
+            </div>
+
+            <!-- Tab: Users -->
+            <div id="tab-users" class="tab">
+                <div class="card">
+                    <div class="toolbar"><h3>👥 用户列表</h3><button class="btn btn-add" onclick="openUserModal()">+ 添加用户</button></div>
+                    <div style="max-height:500px;overflow-y:auto;"><table><thead>
+                        <tr><th>ID</th><th>用户名</th><th>邮箱</th><th>手机</th><th>角色</th><th>注册时间</th><th>操作</th></tr>
+                    </thead><tbody id="usersTbody"></tbody></table></div>
+                </div>
+            </div>
+
+            <!-- Tab: Logs -->
+            <div id="tab-logs" class="tab">
+                <div class="card"><h3>📜 审计日志</h3>
+                    <div style="max-height:550px;overflow-y:auto;"><table><thead>
+                        <tr><th>时间</th><th>用户</th><th>操作</th><th>详情</th><th>IP</th></tr>
+                    </thead><tbody id="logsTbody"></tbody></table></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Record Modal -->
+    <div class="modal-overlay" id="recordModal">
+        <div class="modal"><h3 id="recModalTitle">新增记录</h3>
+            <form onsubmit="submitRecord(event)"><input type="hidden" id="recId">
+                <div class="form-row"><div class="form-group"><label>服务</label><select id="recService" required>
+                    <option value="">请选择</option><option>云服务器</option><option>对象存储</option><option>CDN加速</option><option>数据库</option><option>域名服务</option><option>安全防护</option>
+                </select></div><div class="form-group"><label>类型</label><select id="recType" required onchange="toggleCategory()"><option value="收入">收入</option><option value="支出">支出</option></select></div></div>
+                <div class="form-row"><div class="form-group"><label>金额</label><input type="number" id="recAmount" step="0.01" min="0.01" required></div>
+                <div class="form-group" id="catGroup"><label>分类</label><select id="recCategory"><option value="-">-</option><option>服务器</option><option>带宽</option><option>人工</option><option>软件许可</option><option>其他</option></select></div></div>
+                <div class="form-group"><label>日期</label><input type="date" id="recDate" required></div>
+                <div class="form-group"><label>描述</label><input type="text" id="recDesc"></div>
+                <div class="modal-actions"><button type="button" class="btn btn-cancel" onclick="closeModal('recordModal')">取消</button><button type="submit" class="btn btn-add">保存</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Modal -->
+    <div class="modal-overlay" id="userModal">
+        <div class="modal"><h3 id="userModalTitle">添加用户</h3>
+            <form onsubmit="submitUser(event)"><input type="hidden" id="editUserId">
+                <div class="form-row"><div class="form-group"><label>用户名*</label><input type="text" id="newUsername" required minlength="2"></div>
+                <div class="form-group"><label>密码* <span id="pwHint">(至少6位)</span></label><input type="password" id="newPassword" minlength="6"></div></div>
+                <div class="form-row"><div class="form-group"><label>邮箱</label><input type="email" id="newEmail"></div>
+                <div class="form-group"><label>手机</label><input type="tel" id="newPhone"></div></div>
+                <div class="form-group"><label>角色</label><select id="newRole"><option value="user">普通用户</option><option value="admin">管理员</option></select></div>
+                <div class="modal-actions"><button type="button" class="btn btn-cancel" onclick="closeModal('userModal')">取消</button><button type="submit" class="btn btn-add" id="userSubmitBtn">创建用户</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal-overlay" id="exportModal">
+        <div class="modal" style="max-width:420px;">
+            <h3>📥 导出计费报表</h3>
+            <p style="color:#666;margin-bottom:20px;">请选择导出格式：</p>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <button class="btn btn-add" style="padding:16px;font-size:15px;" onclick="doExport('excel')">
+                    📊 Excel (.xlsx) — 推荐，带样式表格
+                </button>
+                <button class="btn" style="padding:16px;font-size:15px;background:#f5f5f5;color:#333;border:1px solid #d9d9d9;" onclick="doExport('csv')">
+                    📄 CSV (.csv) — 纯文本，通用格式
+                </button>
+            </div>
+            <div class="modal-actions" style="justify-content:center;margin-top:20px;">
+                <button type="button" class="btn btn-cancel" onclick="closeModal('exportModal')">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch Add Modal -->
+    <div class="modal-overlay" id="batchModal">
+        <div class="modal" style="max-width:680px;">
+            <h3>📋 批量添加计费记录</h3>
+            <p style="color:#888;font-size:13px;margin-bottom:6px;">
+                每行一条记录，格式：<code>服务名称,金额,类型,分类,日期,描述</code>
+            </p>
+            <p style="color:#aaa;font-size:12px;margin-bottom:12px;">
+                示例：云服务器,85000,收入,-,2025-07-15,包年续费<br>
+                支持的类型：收入/支出 &nbsp; 分类：服务器/带宽/人工/软件许可/其他（收入填 -）
+            </p>
+            <textarea id="batchText" rows="10" style="width:100%;padding:12px;border:1.5px solid #d9d9d9;border-radius:8px;font-size:14px;font-family:Consolas,monospace;resize:vertical;" placeholder="云服务器,85000,收入,-,2025-07-15,包年续费&#10;CDN加速,8000,支出,带宽,2025-08-20,动态加速流量包&#10;对象存储,12000,收入,-,2025-09-01,标准存储容量费"></textarea>
+            <div style="color:#888;font-size:12px;margin-top:6px;" id="batchInfo">每行用英文逗号分隔 6 个字段</div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-cancel" onclick="closeModal('batchModal')">取消</button>
+                <button type="button" class="btn btn-add" id="batchSubmitBtn" onclick="submitBatch()">批量提交</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = {
+            get: url => fetch(url, {headers: {'Authorization':'Bearer '+localStorage.getItem('token')}}).then(r=>r.json()),
+            post: (url,data) => fetch(url, {method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('token')},body:JSON.stringify(data)}).then(r=>r.json()),
+            put: (url,data) => fetch(url, {method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('token')},body:JSON.stringify(data)}).then(r=>r.json()),
+            del: url => fetch(url, {method:'DELETE',headers:{'Authorization':'Bearer '+localStorage.getItem('token')}}).then(r=>r.json()),
+        };
+
+        // Auth check
+        if (!localStorage.getItem('token') || localStorage.getItem('role') !== 'admin') { window.location.href='/login.html'; }
+        document.getElementById('navUser').textContent = '👤 '+localStorage.getItem('username');
+
+        function logout() { localStorage.clear(); window.location.href='/login.html'; }
+
+        // Tab switching
+        document.querySelectorAll('.sidebar a[data-tab]').forEach(a => a.addEventListener('click', function(e){
+            e.preventDefault();
+            document.querySelectorAll('.sidebar a').forEach(x=>x.classList.remove('active'));
+            this.classList.add('active');
+            document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+            document.getElementById('tab-'+this.dataset.tab).classList.add('active');
+            if(this.dataset.tab==='dashboard') loadDashboard();
+            if(this.dataset.tab==='records') loadRecords();
+            if(this.dataset.tab==='users') loadUsers();
+            if(this.dataset.tab==='logs') loadLogs();
+        }));
+
+        // Dashboard
+        async function loadDashboard() {
+            const r = await API.get('/api/dashboard');
+            if(!r.success) return;
+            const d = r.dashboard;
+            document.getElementById('kpiContainer').innerHTML = `
+                <div class="kpi-card revenue"><div class="kpi-icon">💰</div><div><div class="kpi-label">全平台总收入</div><div class="kpi-value">¥${d.kpi.total_revenue.toLocaleString()}</div></div></div>
+                <div class="kpi-card cost"><div class="kpi-icon">📉</div><div><div class="kpi-label">全平台总支出</div><div class="kpi-value">¥${d.kpi.total_cost.toLocaleString()}</div></div></div>
+                <div class="kpi-card profit"><div class="kpi-icon">📈</div><div><div class="kpi-label">净利润</div><div class="kpi-value">¥${d.kpi.net_profit.toLocaleString()}</div></div></div>
+                <div class="kpi-card services"><div class="kpi-icon">🖥️</div><div><div class="kpi-label">活跃服务</div><div class="kpi-value">${d.kpi.active_services} 个</div></div></div>
+                <div class="kpi-card users"><div class="kpi-icon">👥</div><div><div class="kpi-label">记录总数</div><div class="kpi-value">${d.record_count} 条</div></div></div>`;
+
+            const colors=['#FF6384','#36A2EB','#FFCE56','#4BC0C0','#9966FF','#FF9F40'];
+            Chart.getChart('revenueChart')?.destroy();
+            Chart.getChart('costChart')?.destroy();
+            Chart.getChart('serviceChart')?.destroy();
+
+            new Chart(document.getElementById('revenueChart'),{type:'line',data:{labels:d.revenue_trend.labels,datasets:[{label:'收入',data:d.revenue_trend.values,borderColor:'#4B8BBE',backgroundColor:'rgba(75,139,190,0.1)',fill:true,tension:.3}]},options:{responsive:true,maintainAspectRatio:false}});
+            new Chart(document.getElementById('costChart'),{type:'doughnut',data:{labels:d.cost_breakdown.labels,datasets:[{data:d.cost_breakdown.values,backgroundColor:colors}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+            new Chart(document.getElementById('serviceChart'),{type:'bar',data:{labels:d.service_revenue.labels,datasets:[{data:d.service_revenue.values,backgroundColor:colors.map(c=>c+'99'),borderColor:colors,borderWidth:2,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+        }
+
+        // Records
+        async function loadRecords() {
+            const kw = document.getElementById('recSearch').value;
+            const tp = document.getElementById('recTypeFilter').value;
+            const params = new URLSearchParams(); if(kw) params.set('keyword',kw); if(tp) params.set('type',tp);
+            const r = await API.get('/api/records/search?'+params);
+            const tbody = document.getElementById('recordsTbody');
+            if(!r.success || !r.records.length) { tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:#999;">暂无记录</td></tr>'; return; }
+            tbody.innerHTML = r.records.map(rec=>`<tr>
+                <td>${rec.id}</td><td>${rec.date}</td><td>${rec.service_name}</td>
+                <td><span class="badge ${rec.type==='收入'?'badge-income':'badge-expense'}">${rec.type}</span></td>
+                <td style="text-align:right;">¥${rec.amount.toLocaleString('zh-CN',{minimumFractionDigits:2})}</td>
+                <td>${rec.category}</td><td>${rec.description}</td><td>${rec.user_id}</td>
+                <td><button class="btn btn-sm" onclick='editRecord(${JSON.stringify(rec)})'>✏️</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteRecord(${rec.id})">🗑️</button></td>
+            </tr>`).join('');
+        }
+
+        function openRecordModal(rec) {
+            document.getElementById('recId').value = rec?rec.id:'';
+            document.getElementById('recModalTitle').textContent = rec?'编辑记录':'新增记录';
+            document.getElementById('recService').value = rec?rec.service_name:'';
+            document.getElementById('recType').value = rec?rec.type:'收入';
+            document.getElementById('recAmount').value = rec?rec.amount:'';
+            document.getElementById('recCategory').value = rec?rec.category:'-';
+            document.getElementById('recDate').value = rec?rec.date:new Date().toISOString().split('T')[0];
+            document.getElementById('recDesc').value = rec?rec.description:'';
+            toggleCategory();
+            document.getElementById('recordModal').style.display='flex';
+        }
+        function editRecord(rec) { openRecordModal(rec); }
+        function toggleCategory() {
+            document.getElementById('catGroup').style.display = document.getElementById('recType').value==='支出'?'block':'none';
+        }
+        async function submitRecord(e) {
+            e.preventDefault();
+            const id = document.getElementById('recId').value;
+            const data = { service_name:document.getElementById('recService').value, type:document.getElementById('recType').value, amount:parseFloat(document.getElementById('recAmount').value), category:document.getElementById('recCategory').value, date:document.getElementById('recDate').value, description:document.getElementById('recDesc').value };
+            const result = id ? await API.put('/api/records/update/'+id, data) : await API.post('/api/records/add', data);
+            if(result.success) { closeModal('recordModal'); loadRecords(); } else alert(result.message);
+        }
+        async function deleteRecord(id) { if(!confirm('确定删除？')) return; const r=await API.del('/api/records/delete/'+id); if(r.success) loadRecords(); else alert(r.message); }
+
+        // Users
+        async function loadUsers() {
+            const r = await API.get('/api/users');
+            const tbody = document.getElementById('usersTbody');
+            if(!r.success||!r.users.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;">暂无用户</td></tr>';return;}
+            const meId = localStorage.getItem('userId');
+            tbody.innerHTML = r.users.map(u=>`<tr>
+                <td>${u.id}</td><td><strong>${u.username}</strong></td><td>${u.email||'-'}</td><td>${u.phone||'-'}</td>
+                <td><span class="badge ${u.role==='admin'?'badge-admin':'badge-user'}">${u.role==='admin'?'管理员':'用户'}</span></td>
+                <td>${u.created_at}</td>
+                <td><button class="btn btn-sm" onclick="openUserEdit(${u.id},'${u.username}','${u.email||''}','${u.phone||''}','${u.role}')">🔄</button>
+                    ${u.username!=='admin'&&u.id!=meId?`<button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id},'${u.username}')">🗑️</button>`:''}</td>
+            </tr>`).join('');
+        }
+        function openUserModal() {
+            document.getElementById('userModalTitle').textContent='添加用户'; document.getElementById('editUserId').value='';
+            document.getElementById('newUsername').readOnly=false; document.getElementById('newPassword').required=true;
+            document.getElementById('pwHint').style.display='inline'; document.getElementById('userForm').reset();
+            document.getElementById('newRole').value='user'; document.getElementById('userSubmitBtn').textContent='创建用户';
+            document.getElementById('userModal').style.display='flex';
+        }
+        function openUserEdit(id,uname,email,phone,role) {
+            document.getElementById('userModalTitle').textContent='编辑: '+uname;
+            document.getElementById('editUserId').value=id; document.getElementById('newUsername').value=uname;
+            document.getElementById('newUsername').readOnly=true; document.getElementById('newPassword').required=false;
+            document.getElementById('pwHint').style.display='none'; document.getElementById('newEmail').value=email;
+            document.getElementById('newPhone').value=phone; document.getElementById('newRole').value=role;
+            document.getElementById('userSubmitBtn').textContent='保存修改'; document.getElementById('userModal').style.display='flex';
+        }
+        async function submitUser(e) {
+            e.preventDefault();
+            const id = document.getElementById('editUserId').value;
+            if(id) {
+                const data = { role: document.getElementById('newRole').value };
+                const r = await API.put('/api/users/role/'+id, data);
+                if(r.success) { closeModal('userModal'); loadUsers(); } else alert(r.message);
+            } else {
+                const data = { username:document.getElementById('newUsername').value, password:document.getElementById('newPassword').value, email:document.getElementById('newEmail').value, phone:document.getElementById('newPhone').value, role:document.getElementById('newRole').value };
+                const r = await API.post('/api/users/add', data);
+                if(r.success) { closeModal('userModal'); loadUsers(); } else alert(r.message);
+            }
+        }
+        async function deleteUser(id, uname) { if(!confirm('确定删除用户 "'+uname+'"？')) return; const r=await API.del('/api/users/delete/'+id); if(r.success) loadUsers(); else alert(r.message); }
+
+        // Logs
+        async function loadLogs() {
+            const r = await API.get('/api/audit-logs?limit=50');
+            const tbody = document.getElementById('logsTbody');
+            if(!r.success||!r.logs.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;">暂无日志</td></tr>';return;}
+            tbody.innerHTML = r.logs.map(l=>`<tr><td style="white-space:nowrap;">${l.created_at}</td><td><strong>${l.username}</strong></td><td>${l.action}</td><td>${l.detail}</td><td style="font-family:monospace;">${l.ip_address}</td></tr>`).join('');
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display='none'; }
+        function openExportModal() { document.getElementById('exportModal').style.display='flex'; }
+        async function doExport(fmt) {
+            closeModal('exportModal');
+            const token = localStorage.getItem('token');
+            const ext = fmt === 'excel' ? 'xlsx' : 'csv';
+            try {
+                const resp = await fetch('/api/export?format=' + fmt, {
+                    headers: {'Authorization': 'Bearer ' + token}
+                });
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    alert('❌ 导出失败: ' + (err.message || 'HTTP ' + resp.status));
+                    return;
+                }
+                const blob = await resp.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'billing_records.' + ext;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                alert('✅ ' + (fmt === 'excel' ? 'Excel' : 'CSV') + ' 报表下载完成！');
+            } catch (err) {
+                alert('❌ 下载失败: ' + err.message);
+            }
+        }
+
+        // Batch add
+        function openBatchModal() {
+            document.getElementById('batchText').value = '';
+            document.getElementById('batchModal').style.display='flex';
+        }
+        async function submitBatch() {
+            const raw = document.getElementById('batchText').value.trim();
+            if (!raw) { alert('请粘贴要批量添加的记录'); return; }
+            const lines = raw.split('\n').filter(l => l.trim());
+            const records = [];
+            const errors = [];
+            lines.forEach((line, i) => {
+                const parts = line.split(',');
+                if (parts.length < 4) { errors.push(`第${i+1}行: 字段不足（至少需要 服务名称,金额,类型,分类）`); return; }
+                const [service_name, amount, type, category, date, description] = parts.map(s => s.trim());
+                const amt = parseFloat(amount);
+                if (!service_name || isNaN(amt) || amt <= 0) { errors.push(`第${i+1}行: 金额无效`); return; }
+                if (!['收入','支出'].includes(type)) { errors.push(`第${i+1}行: 类型必须是"收入"或"支出"`); return; }
+                records.push({
+                    service_name, amount: amt, type,
+                    category: category || '-',
+                    date: date || new Date().toISOString().split('T')[0],
+                    description: description || '',
+                });
+            });
+            if (errors.length && !confirm(errors.slice(0,5).join('\n') + '\n\n共 ' + errors.length + ' 个错误，是否跳过错误行继续提交？')) return;
+            if (records.length === 0) { alert('没有有效记录可提交'); return; }
+
+            const btn = document.getElementById('batchSubmitBtn');
+            btn.disabled = true; btn.textContent = '提交中...';
+
+            const r = await API.post('/api/records/batch-add', { records });
+            if (r.success) {
+                alert('✅ ' + r.message);
+                closeModal('batchModal');
+                loadRecords();
+                loadDashboard();
+            } else {
+                alert('❌ ' + r.message);
+            }
+            btn.disabled = false; btn.textContent = '批量提交';
+        }
+
+        // Init
+        loadDashboard();
+    </script>
+</body>
+</html>

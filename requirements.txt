@@ -1,0 +1,7 @@
+# 计费仪表盘依赖 (MySQL + Redis 前后端分离版)
+flask>=3.0
+pymysql>=1.1
+dbutils>=3.0
+redis>=5.0
+pyjwt>=2.8
+openpyxl>=3.1

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ info.name }}登录 - 计费仪表盘</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/auth.css">
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <div class="auth-card social-auth-card">
+            <div class="auth-header">
+                <span class="social-icon-large">{{ info.icon }}</span>
+                <h1>{{ info.name }}授权登录</h1>
+                <p class="social-desc">
+                    模拟 OAuth 2.0 授权码流程<br>
+                    <small>（学习演示：真实环境需要 AppID 和已备案域名）</small>
+                </p>
+            </div>
+
+            <!-- 模拟的授权信息卡片 -->
+            <div class="oauth-info-box">
+                <div class="oauth-step">
+                    <span class="step-num">1</span>
+                    <span>用户点击"{{ info.name }}登录" → 跳转到 {{ info.name }} 授权页</span>
+                </div>
+                <div class="oauth-step">
+                    <span class="step-num">2</span>
+                    <span>用户扫码确认授权 → {{ info.name }} 返回 authorization_code</span>
+                </div>
+                <div class="oauth-step">
+                    <span class="step-num">3</span>
+                    <span>服务端用 code 换取 access_token → 获取用户信息</span>
+                </div>
+                <div class="oauth-step">
+                    <span class="step-num">4</span>
+                    <span>自动创建/绑定账户 → 完成登录</span>
+                </div>
+            </div>
+
+            <!-- 模拟二维码 -->
+            <div class="mock-qrcode">
+                <div class="qrcode-box">
+                    <span class="qrcode-icon">{{ info.icon }}</span>
+                    <span class="qrcode-text">{{ info.name }}<br>扫码模拟</span>
+                </div>
+                <p class="qrcode-hint">请使用{{ info.name }}扫描二维码授权</p>
+            </div>
+
+            <form method="POST" action="/social-login/{{ provider }}" style="text-align:center;">
+                <button type="submit" class="btn btn-primary btn-block"
+                        style="background: {{ info.color }}; border-color: {{ info.color }};">
+                    ✅ 确认授权并登录
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <a href="/login">← 返回登录页</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

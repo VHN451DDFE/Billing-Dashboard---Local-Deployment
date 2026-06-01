@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - 计费仪表盘</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/auth.css">
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>📝 创建账号</h1>
+                <p>注册一个新的计费仪表盘账户</p>
+            </div>
+
+            {% if error %}
+            <div class="auth-error">{{ error }}</div>
+            {% endif %}
+
+            <form method="POST" action="/register" class="auth-form" autocomplete="off"
+                  onsubmit="return validateRegister()">
+                <div class="form-group">
+                    <label for="username">👤 用户名 <span class="required">*</span></label>
+                    <input type="text" id="username" name="username"
+                           placeholder="至少 2 个字符" required minlength="2">
+                </div>
+                <div class="form-group">
+                    <label for="email">📧 邮箱</label>
+                    <input type="email" id="email" name="email"
+                           placeholder="your@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="phone">📱 手机号</label>
+                    <input type="tel" id="phone" name="phone"
+                           placeholder="13800000000">
+                </div>
+                <div class="form-group">
+                    <label for="password">🔒 密码 <span class="required">*</span></label>
+                    <input type="password" id="password" name="password"
+                           placeholder="至少 6 位" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label for="confirm">🔒 确认密码 <span class="required">*</span></label>
+                    <input type="password" id="confirm" name="confirm"
+                           placeholder="再次输入密码" required>
+                    <span id="confirmError" class="field-error"></span>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">注 册</button>
+            </form>
+
+            <div class="auth-footer">
+                <span>已有账号？</span>
+                <a href="/login">立即登录 →</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function validateRegister() {
+            const pw = document.getElementById('password').value;
+            const cf = document.getElementById('confirm').value;
+            const err = document.getElementById('confirmError');
+            if (pw !== cf) {
+                err.textContent = '两次密码不一致';
+                return false;
+            }
+            err.textContent = '';
+            return true;
+        }
+    </script>
+</body>
+</html>

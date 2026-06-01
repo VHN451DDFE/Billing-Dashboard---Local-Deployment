@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 计费仪表盘</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/auth.css">
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>📊 计费仪表盘</h1>
+                <p>登录您的账户</p>
+            </div>
+
+            {% if error %}
+            <div class="auth-error">{{ error }}</div>
+            {% endif %}
+
+            <form method="POST" action="/login" class="auth-form" autocomplete="off">
+                <div class="form-group">
+                    <label for="username">👤 用户名</label>
+                    <input type="text" id="username" name="username"
+                           placeholder="请输入用户名" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="password">🔒 密码</label>
+                    <input type="password" id="password" name="password"
+                           placeholder="请输入密码" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">登 录</button>
+            </form>
+
+            <div class="auth-footer">
+                <span>还没有账号？</span>
+                <a href="/register">立即注册 →</a>
+            </div>
+
+            <!-- 第三方登录 -->
+            <div class="social-divider">
+                <span>—— 第三方登录 ——</span>
+            </div>
+            <div class="social-buttons">
+                <a href="/social-login/wechat" class="social-btn wechat">
+                    <span class="social-icon">💬</span> 微信登录
+                </a>
+                <a href="/social-login/qq" class="social-btn qq">
+                    <span class="social-icon">🐧</span> QQ登录
+                </a>
+                <a href="/social-login/weibo" class="social-btn weibo">
+                    <span class="social-icon">📢</span> 微博登录
+                </a>
+            </div>
+
+            <div class="demo-hint">
+                💡 演示账号：admin / 123456
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员仪表盘 - 计费系统</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- Top Navbar -->
+    <nav class="navbar admin-nav">
+        <div class="nav-left">
+            <h1>🛡️ 管理员控制台</h1>
+            <span class="nav-subtitle">计费数据管理后台</span>
+            <div class="role-badge admin-badge">管理员</div>
+        </div>
+        <div class="nav-right">
+            <a href="/profile" class="nav-link">👤 {{ user.username }}</a>
+            <a href="/user" class="nav-link">切换到用户视图</a>
+            <a href="/api/export/csv" class="btn btn-export" title="导出CSV报表">📥 导出报表</a>
+            <a href="/logout" class="btn btn-logout">退出登录</a>
+        </div>
+    </nav>
+
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <nav class="sidebar-nav">
+                <a href="#tab-overview" class="sidebar-item active" data-tab="tab-overview">
+                    <span class="sidebar-icon">📊</span> 数据概览
+                </a>
+                <a href="#tab-records" class="sidebar-item" data-tab="tab-records">
+                    <span class="sidebar-icon">📋</span> 计费记录
+                </a>
+                <a href="#tab-users" class="sidebar-item" data-tab="tab-users">
+                    <span class="sidebar-icon">👥</span> 用户管理
+                </a>
+                <a href="#tab-logs" class="sidebar-item" data-tab="tab-logs">
+                    <span class="sidebar-icon">📜</span> 审计日志
+                </a>
+                <a href="/profile" class="sidebar-item">
+                    <span class="sidebar-icon">⚙️</span> 个人设置
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="sidebar-stats">
+                    <div class="stat-row">
+                        <span>总用户</span><strong>{{ user_stats.total_users }}</strong>
+                    </div>
+                    <div class="stat-row">
+                        <span>管理员</span><strong>{{ user_stats.admin_count }}</strong>
+                    </div>
+                    <div class="stat-row">
+                        <span>普通用户</span><strong>{{ user_stats.user_count }}</strong>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+
+            <!-- Tab: 数据概览 -->
+            <section id="tab-overview" class="tab-content active">
+                <h2 class="section-title">📊 系统数据概览</h2>
+
+                <!-- KPI Cards -->
+                <div class="kpi-grid kpi-grid-5">
+                    <div class="kpi-card revenue">
+                        <div class="kpi-icon">💰</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">全平台总收入</span>
+                            <span class="kpi-value">{{ "¥{:,.2f}".format(dashboard.kpi.total_revenue) }}</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card cost">
+                        <div class="kpi-icon">📉</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">全平台总支出</span>
+                            <span class="kpi-value">{{ "¥{:,.2f}".format(dashboard.kpi.total_cost) }}</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card profit">
+                        <div class="kpi-icon">📈</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">净利润</span>
+                            <span class="kpi-value">{{ "¥{:,.2f}".format(dashboard.kpi.net_profit) }}</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card services">
+                        <div class="kpi-icon">🖥️</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">活跃服务数</span>
+                            <span class="kpi-value">{{ dashboard.kpi.active_services }} 个</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card users">
+                        <div class="kpi-icon">👥</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">平台用户数</span>
+                            <span class="kpi-value">{{ user_stats.total_users }} 人</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Revenue Trend -->
+                <div class="chart-section full-width">
+                    <div class="chart-card">
+                        <h2>📈 全平台收入趋势</h2>
+                        <div class="chart-container">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cost Breakdown + Service Revenue -->
+                <div class="chart-section two-col">
+                    <div class="chart-card">
+                        <h2>🍩 支出分类占比</h2>
+                        <div class="chart-container">
+                            <canvas id="costChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h2>📊 各服务收入对比</h2>
+                        <div class="chart-container">
+                            <canvas id="serviceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: 计费记录 -->
+            <section id="tab-records" class="tab-content">
+                <div class="table-header-row">
+                    <h2 class="section-title">📋 全平台计费记录</h2>
+                    <div class="table-toolbar">
+                        <div class="search-box">
+                            <input type="text" id="recordSearch" placeholder="🔍 搜索服务名称或描述..." oninput="searchRecords()">
+                            <select id="recordTypeFilter" onchange="searchRecords()">
+                                <option value="">全部类型</option>
+                                <option value="收入">收入</option>
+                                <option value="支出">支出</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-add" onclick="openAddModal()">+ 新增记录</button>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="table-wrapper" style="max-height: 500px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>日期</th>
+                                    <th>服务名称</th>
+                                    <th>类型</th>
+                                    <th>金额</th>
+                                    <th>分类</th>
+                                    <th>描述</th>
+                                    <th>用户ID</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recordsTableBody">
+                                {% for record in dashboard.records %}
+                                <tr data-type="{{ record.type }}" data-keyword="{{ record.service_name }} {{ record.description }}">
+                                    <td>{{ record.id }}</td>
+                                    <td>{{ record.date }}</td>
+                                    <td>{{ record.service_name }}</td>
+                                    <td>
+                                        <span class="badge {{ 'badge-income' if record.type == '收入' else 'badge-expense' }}">
+                                            {{ record.type }}
+                                        </span>
+                                    </td>
+                                    <td class="amount">{{ "¥{:,.2f}".format(record.amount) }}</td>
+                                    <td>{{ record.category }}</td>
+                                    <td>{{ record.description }}</td>
+                                    <td>{{ record.user_id }}</td>
+                                    <td class="action-cell">
+                                        <button class="btn-action btn-edit"
+                                                onclick="openEditModal({{ record | tojson }})" title="编辑">✏️</button>
+                                        <button class="btn-action btn-delete"
+                                                onclick="deleteRecord({{ record.id }})" title="删除">🗑️</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: 用户管理 -->
+            <section id="tab-users" class="tab-content">
+                <div class="table-header-row">
+                    <h2 class="section-title">👥 用户管理</h2>
+                    <button class="btn btn-add" onclick="openUserAddModal()">+ 添加用户</button>
+                </div>
+                <div class="chart-card">
+                    <div class="table-wrapper" style="max-height: 500px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>用户名</th>
+                                    <th>邮箱</th>
+                                    <th>手机号</th>
+                                    <th>角色</th>
+                                    <th>注册时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                {% for u in all_users %}
+                                <tr>
+                                    <td>{{ u.id }}</td>
+                                    <td><strong>{{ u.username }}</strong></td>
+                                    <td>{{ u.email or '-' }}</td>
+                                    <td>{{ u.phone or '-' }}</td>
+                                    <td>
+                                        <span class="badge {{ 'badge-admin-role' if u.role == 'admin' else 'badge-user-role' }}">
+                                            {{ '管理员' if u.role == 'admin' else '普通用户' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ u.created_at }}</td>
+                                    <td class="action-cell">
+                                        <button class="btn-action btn-edit"
+                                                onclick="openUserEditModal({{ u | tojson }})" title="编辑角色">🔄</button>
+                                        {% if u.username != 'admin' and u.id != user.id %}
+                                        <button class="btn-action btn-delete"
+                                                onclick="deleteUser({{ u.id }}, '{{ u.username }}')" title="删除用户">🗑️</button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: 审计日志 -->
+            <section id="tab-logs" class="tab-content">
+                <h2 class="section-title">📜 系统审计日志</h2>
+                <div class="chart-card">
+                    <div class="table-wrapper" style="max-height: 550px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>时间</th>
+                                    <th>用户</th>
+                                    <th>操作</th>
+                                    <th>详情</th>
+                                    <th>IP 地址</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in audit_logs %}
+                                <tr>
+                                    <td style="white-space:nowrap;">{{ log.created_at }}</td>
+                                    <td><strong>{{ log.username or '系统' }}</strong></td>
+                                    <td>
+                                        <span class="badge badge-log">{{ log.action }}</span>
+                                    </td>
+                                    <td>{{ log.detail }}</td>
+                                    <td style="font-family:monospace;font-size:12px;">{{ log.ip_address }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal: Add / Edit Record -->
+    <div class="modal-overlay" id="modalOverlay" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">新增计费记录</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="recordForm" onsubmit="submitForm(event)">
+                <input type="hidden" id="recordId" value="">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="service_name">服务名称</label>
+                        <select id="service_name" required>
+                            <option value="">请选择服务</option>
+                            <option value="云服务器">云服务器</option>
+                            <option value="对象存储">对象存储</option>
+                            <option value="CDN加速">CDN加速</option>
+                            <option value="数据库">数据库</option>
+                            <option value="域名服务">域名服务</option>
+                            <option value="安全防护">安全防护</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="rec_type">类型</label>
+                        <select id="rec_type" required onchange="onTypeChange()">
+                            <option value="收入">收入</option>
+                            <option value="支出">支出</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="amount">金额 (元)</label>
+                        <input type="number" id="amount" placeholder="0.00" step="0.01" min="0.01" required>
+                    </div>
+                    <div class="form-group" id="categoryGroup">
+                        <label for="category">分类</label>
+                        <select id="category">
+                            <option value="-">-</option>
+                            <option value="服务器">服务器</option>
+                            <option value="带宽">带宽</option>
+                            <option value="人工">人工</option>
+                            <option value="软件许可">软件许可</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="rec_date">日期</label>
+                        <input type="date" id="rec_date" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="description">描述</label>
+                    <input type="text" id="description" placeholder="计费描述信息">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" onclick="closeModal()">取消</button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add User -->
+    <div class="modal-overlay" id="userModalOverlay" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="userModalTitle">添加用户</h3>
+                <button class="modal-close" onclick="closeUserModal()">&times;</button>
+            </div>
+            <form id="userForm" onsubmit="submitUserForm(event)">
+                <input type="hidden" id="editUserId" value="">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="new_username">用户名 <span style="color:#ff4d4f;">*</span></label>
+                        <input type="text" id="new_username" placeholder="至少 2 个字符" required minlength="2">
+                    </div>
+                    <div class="form-group">
+                        <label for="new_password">密码 <span style="color:#ff4d4f;" id="pwRequired">*</span></label>
+                        <input type="password" id="new_password" placeholder="至少 6 位" minlength="6">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="new_email">邮箱</label>
+                        <input type="email" id="new_email" placeholder="user@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="new_phone">手机号</label>
+                        <input type="tel" id="new_phone" placeholder="13800000000">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="new_role">角色</label>
+                        <select id="new_role">
+                            <option value="user">普通用户</option>
+                            <option value="admin">管理员</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" onclick="closeUserModal()">取消</button>
+                    <button type="submit" class="btn btn-primary" id="userSubmitBtn">创建用户</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Edit User Role -->
+    <div class="modal-overlay" id="roleModalOverlay" style="display:none;">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>修改用户角色</h3>
+                <button class="modal-close" onclick="closeRoleModal()">&times;</button>
+            </div>
+            <form id="roleForm" onsubmit="submitRoleForm(event)">
+                <input type="hidden" id="roleUserId" value="">
+                <div class="form-group" style="text-align:center;">
+                    <p style="margin-bottom:12px;">用户: <strong id="roleUsername"></strong></p>
+                    <label for="roleSelect">选择角色</label>
+                    <select id="roleSelect" style="width:100%;padding:10px;border-radius:8px;border:1.5px solid #d9d9d9;font-size:14px;">
+                        <option value="user">普通用户</option>
+                        <option value="admin">管理员</option>
+                    </select>
+                </div>
+                <div class="modal-actions" style="justify-content:center;">
+                    <button type="button" class="btn btn-cancel" onclick="closeRoleModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Data bridge + Chart initialization -->
+    <script>
+        const dashboardData = {{ dashboard | tojson }};
+
+        function formatWan(value) {
+            return (value / 10000).toFixed(1) + '万';
+        }
+
+        function formatYuan(value) {
+            return '¥' + value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // ── Tab Navigation ──
+        document.querySelectorAll('.sidebar-item[data-tab]').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tabId = this.getAttribute('data-tab');
+                // Update active sidebar item
+                document.querySelectorAll('.sidebar-item[data-tab]').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+                // Show matching tab content
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // ── Charts ──
+        document.addEventListener('DOMContentLoaded', function () {
+            const fontFamily = "'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', sans-serif";
+            const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
+
+            // Revenue Trend Line Chart
+            new Chart(document.getElementById('revenueChart'), {
+                type: 'line',
+                data: {
+                    labels: dashboardData.revenue_trend.labels,
+                    datasets: [{
+                        label: '收入 (元)',
+                        data: dashboardData.revenue_trend.values,
+                        borderColor: '#4B8BBE',
+                        backgroundColor: 'rgba(75, 139, 190, 0.1)',
+                        fill: true, tension: 0.3,
+                        pointBackgroundColor: '#4B8BBE',
+                        pointBorderColor: '#fff', pointBorderWidth: 2,
+                        pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: ctx => formatYuan(ctx.raw) } }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { family: fontFamily, size: 13 } } },
+                        y: {
+                            beginAtZero: false,
+                            ticks: { font: { family: fontFamily, size: 12 }, callback: v => formatWan(v) },
+                            grid: { color: 'rgba(0,0,0,0.06)' }
+                        }
+                    }
+                }
+            });
+
+            // Cost Doughnut
+            new Chart(document.getElementById('costChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: dashboardData.cost_breakdown.labels,
+                    datasets: [{
+                        data: dashboardData.cost_breakdown.values,
+                        backgroundColor: colors, borderColor: '#fff',
+                        borderWidth: 2, hoverBorderWidth: 3,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { font: { family: fontFamily, size: 13 }, padding: 20, usePointStyle: true }
+                        },
+                        tooltip: { callbacks: { label: function (ctx) {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            return ctx.label + ': ' + formatYuan(ctx.raw) + ' (' + ((ctx.raw / total) * 100).toFixed(1) + '%)';
+                        }}}
+                    }
+                }
+            });
+
+            // Service Revenue Bar
+            new Chart(document.getElementById('serviceChart'), {
+                type: 'bar',
+                data: {
+                    labels: dashboardData.service_revenue.labels,
+                    datasets: [{
+                        label: '收入 (元)',
+                        data: dashboardData.service_revenue.values,
+                        backgroundColor: ['rgba(54,162,235,0.75)','rgba(75,192,192,0.75)','rgba(255,206,86,0.75)','rgba(153,102,255,0.75)','rgba(255,159,64,0.75)','rgba(255,99,132,0.75)'],
+                        borderColor: ['rgba(54,162,235,1)','rgba(75,192,192,1)','rgba(255,206,86,1)','rgba(153,102,255,1)','rgba(255,159,64,1)','rgba(255,99,132,1)'],
+                        borderWidth: 1.5, borderRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: ctx => formatYuan(ctx.raw) } }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { family: fontFamily, size: 12 } } },
+                        y: {
+                            beginAtZero: true,
+                            ticks: { font: { family: fontFamily, size: 12 }, callback: v => formatWan(v) },
+                            grid: { color: 'rgba(0,0,0,0.06)' }
+                        }
+                    }
+                }
+            });
+        });
+
+        // ── Record CRUD ──
+        const modal = document.getElementById('modalOverlay');
+
+        function openAddModal() {
+            document.getElementById('modalTitle').textContent = '新增计费记录';
+            document.getElementById('recordId').value = '';
+            document.getElementById('recordForm').reset();
+            document.getElementById('rec_type').value = '收入';
+            document.getElementById('rec_date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('category').value = '-';
+            document.getElementById('submitBtn').textContent = '添加';
+            onTypeChange();
+            modal.style.display = 'flex';
+        }
+
+        function openEditModal(record) {
+            document.getElementById('modalTitle').textContent = '编辑计费记录';
+            document.getElementById('recordId').value = record.id;
+            document.getElementById('service_name').value = record.service_name;
+            document.getElementById('rec_type').value = record.type;
+            document.getElementById('amount').value = record.amount;
+            document.getElementById('category').value = record.category;
+            document.getElementById('rec_date').value = record.date;
+            document.getElementById('description').value = record.description;
+            document.getElementById('submitBtn').textContent = '保存';
+            onTypeChange();
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() { modal.style.display = 'none'; }
+
+        function onTypeChange() {
+            const catGroup = document.getElementById('categoryGroup');
+            catGroup.style.display = (document.getElementById('rec_type').value === '支出') ? 'block' : 'none';
+            if (document.getElementById('rec_type').value === '收入') {
+                document.getElementById('category').value = '-';
+            }
+        }
+
+        async function submitForm(e) {
+            e.preventDefault();
+            const recordId = document.getElementById('recordId').value;
+            const data = {
+                service_name: document.getElementById('service_name').value,
+                type: document.getElementById('rec_type').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                category: document.getElementById('category').value,
+                date: document.getElementById('rec_date').value,
+                description: document.getElementById('description').value,
+            };
+            const url = recordId ? '/api/records/update/' + recordId : '/api/records/add';
+            const resp = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+            const result = await resp.json();
+            if (result.success) { window.location.reload(); }
+            else { alert('操作失败：' + (result.message || '未知错误')); }
+        }
+
+        async function deleteRecord(id) {
+            if (!confirm('确定要删除这条计费记录吗？')) return;
+            const resp = await fetch('/api/records/delete/' + id, { method: 'POST', headers: {'Content-Type': 'application/json'} });
+            const result = await resp.json();
+            if (result.success) { window.location.reload(); }
+            else { alert('删除失败：' + (result.message || '未知错误')); }
+        }
+
+        // ── Record Search ──
+        async function searchRecords() {
+            const keyword = document.getElementById('recordSearch').value;
+            const type = document.getElementById('recordTypeFilter').value;
+            const params = new URLSearchParams();
+            if (keyword) params.set('keyword', keyword);
+            if (type) params.set('type', type);
+            const resp = await fetch('/api/records/search?' + params.toString());
+            const result = await resp.json();
+            if (result.success) {
+                const tbody = document.getElementById('recordsTableBody');
+                tbody.innerHTML = result.records.map(r => `
+                    <tr>
+                        <td>${r.id}</td>
+                        <td>${r.date}</td>
+                        <td>${r.service_name}</td>
+                        <td><span class="badge ${r.type === '收入' ? 'badge-income' : 'badge-expense'}">${r.type}</span></td>
+                        <td class="amount">¥${r.amount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</td>
+                        <td>${r.category}</td>
+                        <td>${r.description}</td>
+                        <td>${r.user_id}</td>
+                        <td class="action-cell">
+                            <button class="btn-action btn-edit" onclick="openEditModal(${JSON.stringify(r).replace(/"/g, '&quot;')})" title="编辑">✏️</button>
+                            <button class="btn-action btn-delete" onclick="deleteRecord(${r.id})" title="删除">🗑️</button>
+                        </td>
+                    </tr>
+                `).join('');
+                if (result.records.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:#999;">未找到匹配记录</td></tr>';
+                }
+            }
+        }
+
+        modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
+
+        // ── User Management ──
+        const userModal = document.getElementById('userModalOverlay');
+
+        function openUserAddModal() {
+            document.getElementById('userModalTitle').textContent = '添加用户';
+            document.getElementById('editUserId').value = '';
+            document.getElementById('userForm').reset();
+            document.getElementById('new_role').value = 'user';
+            document.getElementById('pwRequired').style.display = 'inline';
+            document.getElementById('new_password').required = true;
+            document.getElementById('userSubmitBtn').textContent = '创建用户';
+            userModal.style.display = 'flex';
+        }
+
+        function openUserEditModal(user) {
+            document.getElementById('userModalTitle').textContent = '编辑用户: ' + user.username;
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('new_username').value = user.username;
+            document.getElementById('new_username').readOnly = true;
+            document.getElementById('new_password').value = '';
+            document.getElementById('new_password').required = false;
+            document.getElementById('pwRequired').style.display = 'none';
+            document.getElementById('new_email').value = user.email || '';
+            document.getElementById('new_phone').value = user.phone || '';
+            document.getElementById('new_role').value = user.role || 'user';
+            document.getElementById('userSubmitBtn').textContent = '保存修改';
+            userModal.style.display = 'flex';
+        }
+
+        function closeUserModal() {
+            userModal.style.display = 'none';
+            document.getElementById('new_username').readOnly = false;
+            document.getElementById('new_password').required = true;
+            document.getElementById('pwRequired').style.display = 'inline';
+        }
+
+        async function submitUserForm(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editUserId').value;
+            if (editId) {
+                // 编辑模式：仅更新角色
+                const data = {
+                    role: document.getElementById('new_role').value,
+                    email: document.getElementById('new_email').value,
+                    phone: document.getElementById('new_phone').value,
+                };
+                // 更新角色
+                const roleResp = await fetch('/api/users/role/' + editId, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({role: data.role})
+                });
+                const roleResult = await roleResp.json();
+                if (roleResult.success) {
+                    // 同时更新邮箱手机号
+                    await fetch('/api/users/role/' + editId, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+                    window.location.reload();
+                } else {
+                    alert('更新失败：' + (roleResult.message || '未知错误'));
+                }
+            } else {
+                // 新增模式
+                const data = {
+                    username: document.getElementById('new_username').value,
+                    password: document.getElementById('new_password').value,
+                    email: document.getElementById('new_email').value,
+                    phone: document.getElementById('new_phone').value,
+                    role: document.getElementById('new_role').value,
+                };
+                const resp = await fetch('/api/users/add', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
+                });
+                const result = await resp.json();
+                if (result.success) { window.location.reload(); }
+                else { alert('添加失败：' + (result.message || '未知错误')); }
+            }
+        }
+
+        async function deleteUser(id, username) {
+            if (!confirm('确定要删除用户 "' + username + '" 及其所有数据吗？此操作不可撤销！')) return;
+            const resp = await fetch('/api/users/delete/' + id, { method: 'POST', headers: {'Content-Type': 'application/json'} });
+            const result = await resp.json();
+            if (result.success) { window.location.reload(); }
+            else { alert('删除失败：' + (result.message || '未知错误')); }
+        }
+
+        userModal.addEventListener('click', function(e) { if (e.target === userModal) closeUserModal(); });
+    </script>
+</body>
+</html>
